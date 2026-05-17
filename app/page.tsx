@@ -87,10 +87,12 @@ export default function ChatPage() {
   const selectedModelLabel =
     MODEL_OPTIONS.find((m) => m.id === selectedModel)?.label ?? "GPT-4o mini";
 
-  const contextPct = Math.min(
-    100,
-    (estimateTokens(messages) / MODEL_CONTEXT_LIMIT) * 100
-  );
+  const estimatedTokens = estimateTokens(messages);
+  const contextPct = Math.min(100, (estimatedTokens / MODEL_CONTEXT_LIMIT) * 100);
+  const contextLabel =
+    contextPct >= CONTEXT_DANGER_PCT
+      ? `~${estimatedTokens} tokens / ${Math.round(contextPct)}% · Start a new chat`
+      : `~${estimatedTokens} tokens / ${Math.round(contextPct)}% used`;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -220,7 +222,7 @@ export default function ChatPage() {
                         ? "bg-red-500"
                         : "bg-amber-400"
                     }`}
-                    title={`${Math.round(contextPct)}% of context used`}
+                    title={contextLabel}
                   />
                 )}
                 <span
@@ -493,9 +495,7 @@ export default function ChatPage() {
                         : "text-zinc-400 dark:text-zinc-500"
                   }`}
                 >
-                  {contextPct >= CONTEXT_DANGER_PCT
-                    ? `${Math.round(contextPct)}% · Start a new chat`
-                    : `${Math.round(contextPct)}% of context used`}
+                  {contextLabel}
                 </span>
               </div>
             </div>
