@@ -43,8 +43,15 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelId>("gpt-4o-mini");
+  const [pdfStatus, setPdfStatus] = useState<
+    | { kind: "idle" }
+    | { kind: "uploading" }
+    | { kind: "done"; filename: string; charCount: number; chunkCount: number; embeddingDimensions: number }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -112,6 +119,7 @@ export default function ChatPage() {
     setInitialMessages([]);
     setMessages([]);
     setInput("");
+    setPdfStatus({ kind: "idle" });
     inputRef.current?.focus();
   }
 
@@ -123,6 +131,7 @@ export default function ChatPage() {
     setMessages(stored);
     if (session) setSelectedModel(session.model);
     setInput("");
+    setPdfStatus({ kind: "idle" });
     inputRef.current?.focus();
   }
 
@@ -137,9 +146,48 @@ export default function ChatPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-    sendMessage({ text: input }, { body: { model: selectedModel } });
+    sendMessage(
+      { text: input },
+      {
+        body: {
+          model: selectedModel,
+          filename: pdfStatus.kind === "done" ? pdfStatus.filename : undefined,
+        },
+      },
+    );
     setInput("");
     inputRef.current?.focus();
+  }
+
+  async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setPdfStatus({ kind: "uploading" });
+
+    const form = new FormData();
+    form.append("file", file);
+
+    try {
+      const res = await fetch("/api/pdf", { method: "POST", body: form });
+      const json = await res.json();
+      if (!res.ok) {
+        setPdfStatus({ kind: "error", message: json.error ?? "Upload failed" });
+      } else {
+        setPdfStatus({
+          kind: "done",
+          filename: json.filename,
+          charCount: json.charCount,
+          chunkCount: json.chunkCount,
+          embeddingDimensions: json.embeddingDimensions,
+        });
+      }
+    } catch {
+      setPdfStatus({ kind: "error", message: "Network error" });
+    }
+
+    // Reset the input so the same file can be re-selected if needed
+    e.target.value = "";
   }
 
   return (
@@ -507,6 +555,56 @@ export default function ChatPage() {
           <div className="max-w-2xl mx-auto">
             <form onSubmit={handleSubmit} className="flex gap-2 items-end">
               <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                className="hidden"
+                onChange={handlePdfUpload}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={pdfStatus.kind === "uploading"}
+                title="Attach a PDF"
+                className="h-[44px] w-[44px] shrink-0 flex items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-200 transition disabled:opacity-50"
+              >
+                {pdfStatus.kind === "uploading" ? (
+                  <svg
+                    className="w-4 h-4 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8H4z"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                    />
+                  </svg>
+                )}
+              </button>
+              <input
                 ref={inputRef}
                 type="text"
                 value={input}
@@ -554,6 +652,67 @@ export default function ChatPage() {
                 </button>
               )}
             </form>
+            {pdfStatus.kind !== "idle" && (
+              <div className="mt-2 flex items-center gap-2">
+                {pdfStatus.kind === "uploading" && (
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                    Extracting PDF…
+                  </span>
+                )}
+                {pdfStatus.kind === "done" && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                    <svg
+                      className="w-3.5 h-3.5 shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    {pdfStatus.filename} — {pdfStatus.chunkCount} chunks · {pdfStatus.embeddingDimensions}-dim ({pdfStatus.charCount.toLocaleString()} chars)
+                    <button
+                      type="button"
+                      onClick={() => setPdfStatus({ kind: "idle" })}
+                      className="ml-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition"
+                      aria-label="Dismiss"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {pdfStatus.kind === "error" && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-red-500">
+                    <svg
+                      className="w-3.5 h-3.5 shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    {pdfStatus.message}
+                    <button
+                      type="button"
+                      onClick={() => setPdfStatus({ kind: "idle" })}
+                      className="ml-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition"
+                      aria-label="Dismiss"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
             <p className="mt-2 text-center text-xs text-zinc-400 dark:text-zinc-600">
               AI can make mistakes. Verify important information.
             </p>

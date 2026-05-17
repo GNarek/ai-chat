@@ -7,6 +7,7 @@ import {
   UIMessage,
 } from "ai";
 import { z } from "zod";
+import { searchDocument } from "@/app/lib/retriever";
 
 export const maxDuration = 30;
 
@@ -16,6 +17,9 @@ const ALLOWED_MODELS = {
   "gpt-4.1-nano": openai("gpt-4.1-nano"),
   "gpt-4o": openai("gpt-4o"),
 } as const;
+
+const BASE_SYSTEM =
+  "You are an AI coding mentor. Explain code clearly and practically, using TypeScript examples when helpful. Teach the reasoning behind recommendations, call out tradeoffs when they matter, and keep answers focused on the user's goal. Ask clarifying questions only when the request is ambiguous or missing information needed to give a correct answer.";
 
 function getAllowedModel(modelId: unknown) {
   if (typeof modelId === "string" && modelId in ALLOWED_MODELS) {
@@ -56,13 +60,48 @@ const getRandomJoke = tool({
 });
 
 export async function POST(req: Request) {
-  const { messages, model }: { messages: UIMessage[]; model?: string } =
+  const {
+    messages,
+    model,
+    filename,
+  }: { messages: UIMessage[]; model?: string; filename?: string } =
     await req.json();
+
+  let contextBlock = "";
+
+  if (filename) {
+    const lastUserMessage = [...messages]
+      .reverse()
+      .find((m) => m.role === "user");
+    const queryText =
+      lastUserMessage?.parts
+        .filter((p) => p.type === "text")
+        .map((p) => (p as { type: "text"; text: string }).text)
+        .join(" ") ?? "";
+
+    if (queryText) {
+      const results = await searchDocument(filename, queryText);
+
+      if (results.length > 0) {
+        console.log(`[rag] query: "${queryText.slice(0, 80)}"`);
+        results.forEach((r) =>
+          console.log(`  chunk ${r.index} | score: ${r.score.toFixed(4)}`),
+        );
+
+        contextBlock = results
+          .map((r, i) => `[Chunk ${i + 1}]\n${r.text}`)
+          .join("\n\n---\n\n");
+      }
+    }
+  }
+
+  const system = contextBlock
+    ? `${BASE_SYSTEM}\n\nWhen answering, use the following excerpts from the uploaded document when they are relevant. If the context does not cover the question, answer from your own knowledge.\n\nDOCUMENT CONTEXT:\n${contextBlock}`
+    : BASE_SYSTEM;
 
   const result = streamText({
     model: getAllowedModel(model),
-    system:
-      "You are an AI coding mentor. Explain code clearly and practically, using TypeScript examples when helpful. Teach the reasoning behind recommendations, call out tradeoffs when they matter, and keep answers focused on the user's goal. Ask clarifying questions only when the request is ambiguous or missing information needed to give a correct answer.",
+    system,
     messages: await convertToModelMessages(messages),
     tools: { calculator, getRandomJoke },
     stopWhen: stepCountIs(5),
