@@ -4,15 +4,18 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useRef, useState } from "react";
 import {
+  MODEL_CONTEXT_LIMIT,
   type ChatSession,
   type ModelId,
   deleteSession,
   deriveTitle,
+  estimateTokens,
   loadMessages,
   loadSessions,
   saveMessages,
   saveSession,
 } from "./lib/chat-store";
+import { CONTEXT_DANGER_PCT, CONTEXT_WARN_PCT } from "./lib/constants";
 
 const MODEL_OPTIONS: { id: ModelId; label: string }[] = [
   { id: "gpt-4o-mini", label: "GPT-4o mini" },
@@ -83,6 +86,11 @@ export default function ChatPage() {
   const isLoading = status === "submitted" || status === "streaming";
   const selectedModelLabel =
     MODEL_OPTIONS.find((m) => m.id === selectedModel)?.label ?? "GPT-4o mini";
+
+  const contextPct = Math.min(
+    100,
+    (estimateTokens(messages) / MODEL_CONTEXT_LIMIT) * 100
+  );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -205,6 +213,16 @@ export default function ChatPage() {
                 }`}
               >
                 <span className="flex-1 truncate">{session.title}</span>
+                {activeChatId === session.id && contextPct >= CONTEXT_WARN_PCT && (
+                  <span
+                    className={`shrink-0 w-1.5 h-1.5 rounded-full ${
+                      contextPct >= CONTEXT_DANGER_PCT
+                        ? "bg-red-500"
+                        : "bg-amber-400"
+                    }`}
+                    title={`${Math.round(contextPct)}% of context used`}
+                  />
+                )}
                 <span
                   role="button"
                   onClick={(e) => handleDeleteSession(e, session.id)}
@@ -414,6 +432,41 @@ export default function ChatPage() {
             <div ref={messagesEndRef} />
           </div>
         </main>
+
+        {/* Context usage bar — shown whenever there are messages */}
+        {messages.length > 0 && (
+          <div className="shrink-0 px-4 py-2 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800">
+            <div className="max-w-2xl mx-auto">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      contextPct >= CONTEXT_DANGER_PCT
+                        ? "bg-red-500"
+                        : contextPct >= CONTEXT_WARN_PCT
+                          ? "bg-amber-400"
+                          : "bg-zinc-400 dark:bg-zinc-500"
+                    }`}
+                    style={{ width: `${Math.max(contextPct, 1)}%` }}
+                  />
+                </div>
+                <span
+                  className={`text-xs shrink-0 ${
+                    contextPct >= CONTEXT_DANGER_PCT
+                      ? "text-red-500"
+                      : contextPct >= CONTEXT_WARN_PCT
+                        ? "text-amber-500"
+                        : "text-zinc-400 dark:text-zinc-500"
+                  }`}
+                >
+                  {contextPct >= CONTEXT_DANGER_PCT
+                    ? `${Math.round(contextPct)}% · Start a new chat`
+                    : `${Math.round(contextPct)}% of context used`}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Input area */}
         <div className="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 shrink-0">

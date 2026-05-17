@@ -51,6 +51,18 @@ export function saveMessages(id: string, messages: UIMessage[]): void {
   localStorage.setItem(messagesKey(id), JSON.stringify(messages));
 }
 
+export const MODEL_CONTEXT_LIMIT = 128_000;
+
+export function estimateTokens(messages: UIMessage[]): number {
+  return messages.reduce((total, msg) => {
+    const chars = msg.parts
+      .filter((p) => p.type === "text")
+      .map((p) => (p as { type: "text"; text: string }).text)
+      .join("").length;
+    return total + Math.ceil(chars / 4);
+  }, 0);
+}
+
 export function deriveTitle(messages: UIMessage[]): string {
   const first = messages.find((m) => m.role === "user");
   if (!first) return "New Chat";
