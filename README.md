@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Chat
+
+A streaming AI chat app built with Next.js, TypeScript, and OpenAI. Designed as a learning project to explore how modern AI chat interfaces actually work under the hood.
+
+## Features
+
+**Streaming responses** — replies appear word by word in real time, just like ChatGPT. You can stop a response mid-stream if the model goes off track.
+
+**Model selection** — switch between three OpenAI models from the header. Each chat session remembers which model you used.
+
+| Model | Best for |
+|---|---|
+| GPT-4o mini | Fast, cheap, everyday questions |
+| GPT-4.1 nano | Lightest and fastest |
+| GPT-4o | Best quality, higher cost |
+
+**Chat history** — all your conversations are saved locally in the browser. Switch between past chats from the sidebar, pick up where you left off, or delete ones you no longer need.
+
+**Context usage indicator** — a progress bar above the input box shows how much of the model's context window you've used. Helps you know when it's worth starting a fresh chat to keep costs down.
+
+**Built-in tools** — the assistant can call tools mid-response when needed:
+- **Calculator** — evaluates math expressions precisely instead of guessing
+- **Random joke** — returns a programming joke (great for testing tool calling)
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repo and install dependencies:
+
+```bash
+npm install
+```
+
+2. Create a `.env.local` file with your OpenAI API key:
+
+```
+OPENAI_API_KEY=sk-...
+```
+
+3. Start the dev server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) and start chatting.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+app/
+  api/chat/route.ts   — server-side: model config, system prompt, tools
+  lib/chat-store.ts   — localStorage helpers for sessions and messages
+  lib/constants.ts    — tunable config (context warning thresholds)
+  page.tsx            — the full chat UI
+```
 
-## Learn More
+## Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js](https://nextjs.org) (App Router)
+- [Vercel AI SDK](https://sdk.vercel.ai) v6
+- [OpenAI](https://platform.openai.com)
+- [Tailwind CSS](https://tailwindcss.com)
+- [Zod](https://zod.dev) for tool input validation
