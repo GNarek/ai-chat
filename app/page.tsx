@@ -377,6 +377,28 @@ export default function ChatPage() {
                       <span key={i} className="whitespace-pre-wrap">
                         {part.text}
                       </span>
+                    ) : part.type === "tool-calculator" ? (
+                      <div
+                        key={i}
+                        className="my-1 flex items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 text-xs font-mono"
+                      >
+                        <span className="text-zinc-400 dark:text-zinc-500 shrink-0">
+                          ƒ
+                        </span>
+                        <span className="text-zinc-700 dark:text-zinc-300">
+                          {part.state === "input-streaming"
+                            ? "…"
+                            : String((part.input as { expression: string }).expression)}
+                        </span>
+                        {part.state === "output-available" && (
+                          <>
+                            <span className="text-zinc-400 dark:text-zinc-500">=</span>
+                            <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                              {String((part.output as { result: string }).result)}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     ) : null
                   )}
                 </div>

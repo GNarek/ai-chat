@@ -1,5 +1,6 @@
 import { openai } from "@ai-sdk/openai";
-import { convertToModelMessages, streamText, UIMessage } from "ai";
+import { convertToModelMessages, stepCountIs, streamText, tool, UIMessage } from "ai";
+import { z } from "zod";
 
 export const maxDuration = 30;
 
@@ -18,6 +19,22 @@ function getAllowedModel(modelId: unknown) {
   return ALLOWED_MODELS[DEFAULT_MODEL];
 }
 
+const calculator = tool({
+  description:
+    "Evaluate a math expression (e.g. '2 + 2', '(3 * 4) / 2', 'Math.sqrt(144)')",
+  inputSchema: z.object({
+    expression: z.string().describe("The math expression to evaluate"),
+  }),
+  execute: async ({ expression }: { expression: string }) => {
+    try {
+      const result = Function(`"use strict"; return (${expression})`)();
+      return { expression, result: String(result) };
+    } catch {
+      return { expression, result: "Error: invalid expression" };
+    }
+  },
+});
+
 export async function POST(req: Request) {
   const { messages, model }: { messages: UIMessage[]; model?: string } =
     await req.json();
@@ -27,6 +44,8 @@ export async function POST(req: Request) {
     system:
       "You are an AI coding mentor. Explain code clearly and practically, using TypeScript examples when helpful. Teach the reasoning behind recommendations, call out tradeoffs when they matter, and keep answers focused on the user's goal. Ask clarifying questions only when the request is ambiguous or missing information needed to give a correct answer.",
     messages: await convertToModelMessages(messages),
+    tools: { calculator },
+    stopWhen: stepCountIs(5),
   });
 
   return result.toUIMessageStreamResponse();
