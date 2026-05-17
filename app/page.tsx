@@ -180,6 +180,9 @@ export default function ChatPage() {
             query,
             topK: data.topK ?? 3,
             latencyMs: data.latencyMs ?? 0,
+            threshold: data.threshold ?? 0.35,
+            topScore: data.topScore ?? 0,
+            contextUsed: data.contextUsed ?? false,
             results: data.results ?? [],
           }),
         )

@@ -15,6 +15,9 @@ export type RetrievalSnapshot = {
   query: string;
   topK: number;
   latencyMs: number;
+  threshold: number;
+  topScore: number;
+  contextUsed: boolean;
   results: CitationResult[];
 };
 
@@ -86,6 +89,20 @@ export function RetrievalInspector({
         <span className="text-zinc-300 dark:text-zinc-700">·</span>
         <span className="text-zinc-500 dark:text-zinc-400">
           {snapshot.latencyMs}ms
+        </span>
+        <span className="text-zinc-300 dark:text-zinc-700">·</span>
+        <span className="text-zinc-500 dark:text-zinc-400">
+          top {Math.round(snapshot.topScore * 100)}% / min {Math.round(snapshot.threshold * 100)}%
+        </span>
+        <span className="text-zinc-300 dark:text-zinc-700">·</span>
+        <span
+          className={
+            snapshot.contextUsed
+              ? "font-medium text-green-600 dark:text-green-400"
+              : "font-medium text-amber-600 dark:text-amber-400"
+          }
+        >
+          {snapshot.contextUsed ? "context used" : "context skipped"}
         </span>
       </button>
 

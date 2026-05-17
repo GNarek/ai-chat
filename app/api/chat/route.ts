@@ -7,6 +7,7 @@ import {
   UIMessage,
 } from "ai";
 import { z } from "zod";
+import { MIN_RAG_SCORE } from "@/app/lib/constants";
 import { searchDocument } from "@/app/lib/retriever";
 
 export const maxDuration = 30;
@@ -81,13 +82,17 @@ export async function POST(req: Request) {
 
     if (queryText) {
       const results = await searchDocument(filename, queryText);
+      const topScore = results[0]?.score ?? 0;
+      const contextUsed = topScore >= MIN_RAG_SCORE;
 
-      if (results.length > 0) {
-        console.log(`[rag] query: "${queryText.slice(0, 80)}"`);
+      console.log(
+        `[rag] query: "${queryText.slice(0, 80)}" | top: ${topScore.toFixed(4)} | threshold: ${MIN_RAG_SCORE} | context: ${contextUsed ? "injected" : "skipped"}`,
+      );
+
+      if (contextUsed) {
         results.forEach((r) =>
           console.log(`  chunk ${r.index} | score: ${r.score.toFixed(4)}`),
         );
-
         contextBlock = results
           .map((r, i) => `[Chunk ${i + 1}]\n${r.text}`)
           .join("\n\n---\n\n");
