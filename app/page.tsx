@@ -17,6 +17,13 @@ import {
 } from "./lib/chat-store";
 import { CONTEXT_DANGER_PCT, CONTEXT_WARN_PCT } from "./lib/constants";
 
+type CitationResult = {
+  score: number;
+  index: number;
+  text: string;
+  filename: string;
+};
+
 const MODEL_OPTIONS: { id: ModelId; label: string }[] = [
   { id: "gpt-4o-mini", label: "GPT-4o mini" },
   { id: "gpt-4.1-nano", label: "GPT-4.1 nano" },
@@ -43,6 +50,7 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelId>("gpt-4o-mini");
+  const [citations, setCitations] = useState<CitationResult[]>([]);
   const [pdfStatus, setPdfStatus] = useState<
     | { kind: "idle" }
     | { kind: "uploading" }
@@ -120,6 +128,7 @@ export default function ChatPage() {
     setMessages([]);
     setInput("");
     setPdfStatus({ kind: "idle" });
+    setCitations([]);
     inputRef.current?.focus();
   }
 
@@ -132,6 +141,7 @@ export default function ChatPage() {
     if (session) setSelectedModel(session.model);
     setInput("");
     setPdfStatus({ kind: "idle" });
+    setCitations([]);
     inputRef.current?.focus();
   }
 
@@ -146,6 +156,10 @@ export default function ChatPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
+
+    setCitations([]);
+    const query = input;
+
     sendMessage(
       { text: input },
       {
@@ -156,6 +170,18 @@ export default function ChatPage() {
       },
     );
     setInput("");
+
+    if (pdfStatus.kind === "done") {
+      fetch("/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, filename: pdfStatus.filename }),
+      })
+        .then((r) => r.json())
+        .then((data) => setCitations(data.results ?? []))
+        .catch(() => {});
+    }
+
     inputRef.current?.focus();
   }
 
@@ -509,6 +535,26 @@ export default function ChatPage() {
                     <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:150ms]" />
                     <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:300ms]" />
                   </span>
+                </div>
+              </div>
+            )}
+
+            {citations.length > 0 && (
+              <div className="mt-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 px-4 py-3 text-xs">
+                <p className="mb-2 font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide text-[10px]">
+                  Sources · {citations[0].filename}
+                </p>
+                <div className="space-y-2">
+                  {citations.map((c) => (
+                    <div key={c.index} className="flex items-start gap-2">
+                      <span className="shrink-0 tabular-nums text-zinc-400 dark:text-zinc-500 w-14">
+                        {Math.round(c.score * 100)}% · #{c.index}
+                      </span>
+                      <span className="text-zinc-600 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+                        {c.text.slice(0, 150)}…
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
