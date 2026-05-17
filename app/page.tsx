@@ -399,6 +399,18 @@ export default function ChatPage() {
                           </>
                         )}
                       </div>
+                    ) : part.type === "tool-getRandomJoke" ? (
+                      <div
+                        key={i}
+                        className="my-1 flex items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 text-xs"
+                      >
+                        <span className="shrink-0">🎲</span>
+                        <span className="text-zinc-700 dark:text-zinc-300 italic">
+                          {part.state === "output-available"
+                            ? String((part.output as { joke: string }).joke)
+                            : "…"}
+                        </span>
+                      </div>
                     ) : null
                   )}
                 </div>

@@ -1,5 +1,11 @@
 import { openai } from "@ai-sdk/openai";
-import { convertToModelMessages, stepCountIs, streamText, tool, UIMessage } from "ai";
+import {
+  convertToModelMessages,
+  stepCountIs,
+  streamText,
+  tool,
+  UIMessage,
+} from "ai";
 import { z } from "zod";
 
 export const maxDuration = 30;
@@ -35,6 +41,20 @@ const calculator = tool({
   },
 });
 
+const getRandomJoke = tool({
+  description: "Returns a random programming joke",
+  inputSchema: z.object({}), // no inputs needed
+  execute: async () => {
+    const jokes = [
+      "Why do programmers prefer dark mode? Because light attracts bugs.",
+      "A SQL query walks into a bar, walks up to two tables and asks: 'Can I join you?'",
+      "Why do Java developers wear glasses? Because they don't C#.",
+    ];
+    const joke = jokes[Math.floor(Math.random() * jokes.length)];
+    return { joke };
+  },
+});
+
 export async function POST(req: Request) {
   const { messages, model }: { messages: UIMessage[]; model?: string } =
     await req.json();
@@ -44,7 +64,7 @@ export async function POST(req: Request) {
     system:
       "You are an AI coding mentor. Explain code clearly and practically, using TypeScript examples when helpful. Teach the reasoning behind recommendations, call out tradeoffs when they matter, and keep answers focused on the user's goal. Ask clarifying questions only when the request is ambiguous or missing information needed to give a correct answer.",
     messages: await convertToModelMessages(messages),
-    tools: { calculator },
+    tools: { calculator, getRandomJoke },
     stopWhen: stepCountIs(5),
   });
 
