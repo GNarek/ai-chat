@@ -543,11 +543,18 @@ export default function ChatPage() {
               </div>
             )}
 
-            <RetrievalInspector snapshot={snapshot} />
-
             <div ref={messagesEndRef} />
           </div>
         </main>
+
+        {/* Retrieval Inspector — outside the scroll container so streaming scroll doesn't bounce it */}
+        {snapshot && (
+          <div className="shrink-0 px-4 border-t border-zinc-200 dark:border-zinc-800 max-h-72 overflow-y-auto">
+            <div className="max-w-2xl mx-auto">
+              <RetrievalInspector snapshot={snapshot} />
+            </div>
+          </div>
+        )}
 
         {/* Context usage bar — shown whenever there are messages */}
         {messages.length > 0 && (
