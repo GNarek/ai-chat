@@ -23,6 +23,7 @@ export function RetrievalInspector({
 }: {
   snapshot: RetrievalSnapshot | null;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
   const [expandedChunks, setExpandedChunks] = useState<Set<number>>(
     new Set(),
   );
@@ -47,9 +48,26 @@ export function RetrievalInspector({
       : snapshot.query;
 
   return (
-    <div className="mt-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-xs overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-2 flex-wrap px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-800">
+    <div className="my-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-xs overflow-hidden">
+      {/* Collapsible header */}
+      <button
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition"
+      >
+        <svg
+          className={`w-3 h-3 shrink-0 text-zinc-400 dark:text-zinc-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
         <span className="font-semibold uppercase tracking-wide text-[10px] text-zinc-500 dark:text-zinc-400">
           Retrieval Inspector
         </span>
@@ -69,10 +87,10 @@ export function RetrievalInspector({
         <span className="text-zinc-500 dark:text-zinc-400">
           {snapshot.latencyMs}ms
         </span>
-      </div>
+      </button>
 
-      {/* Chunk rows */}
-      <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+      {/* Chunk rows — only rendered when open */}
+      {isOpen && <div className="divide-y divide-zinc-200 dark:divide-zinc-800 border-t border-zinc-200 dark:border-zinc-800">
         {snapshot.results.map((chunk) => {
           const isExpanded = expandedChunks.has(chunk.index);
           const chunkLength = chunk.end - chunk.start;
@@ -143,7 +161,7 @@ export function RetrievalInspector({
             </div>
           );
         })}
-      </div>
+      </div>}
     </div>
   );
 }
